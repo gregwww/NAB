@@ -29,6 +29,11 @@ namespace WpfApp1
 
             depositsGrid.ItemsSource = controller.Deposits;
 
+            // I could do control bindings for the label and combobox
+            // here as well, however I've prefered using events, they
+            // don't add too much code and demonstrate another way of
+            // communication between app components.
+            //
             controller.OnMaturityUpdateEvent += (total) =>
             {
                 totalMaturity.Content = total.ToString();

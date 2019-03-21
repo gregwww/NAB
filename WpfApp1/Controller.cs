@@ -14,7 +14,7 @@ namespace WpfApp1
     {
         public Controller()
         {
-            CurrentInterestRate = currentInterestRate;
+            CurrentInterestRate = initialInterestRate;
 
             timer.Enabled = false;
             timer.Interval = timerIntervalMs;
@@ -74,12 +74,15 @@ namespace WpfApp1
 
         private double Buy()
         {
+            // TODO: The spec doesn't state what's the rounding for the deposit size should be:
+            // a dollar, thousand ones, hudred grand or a million? I'm assuming the last one.
+            //
             int principal = random.Next(minAddDepositSizeMiL, maxAddDepositSizeMil);
             var deposit = new Deposit(million * principal, CurrentInterestRate);
             deposits.Add(deposit);
 
             var maturity = TotalMaturityAmount();
-            if (!(OnMaturityUpdateEvent is null))
+            if (OnMaturityUpdateEvent != null)
             {
                 OnMaturityUpdateEvent(maturity);
             }
@@ -101,12 +104,13 @@ namespace WpfApp1
             }
             else if (count > 0)
             {
-                // TODO: The spec doesn't state what deposit we have to sell, I'm assumig the last one
+                // TODO: The spec doesn't state which deposit we have to sell, I'm assumig the last added one.
+                //
                 count--;
                 deposits.RemoveAt(count);   
 
                 maturity = TotalMaturityAmount();
-                if (!(OnMaturityUpdateEvent is null))
+                if (OnMaturityUpdateEvent != null)
                 {
                     OnMaturityUpdateEvent(maturity);
                 }
@@ -118,7 +122,6 @@ namespace WpfApp1
             }
             return maturity;
         }
-
 
         public double TotalMaturityAmount()
         {
@@ -132,13 +135,26 @@ namespace WpfApp1
 
         public void PrePopulateDeposits()
         {
-            while (deposits.Count() < 50)
+            double maturity = 0;
+            while (deposits.Count < 50)
             {
-                if (Buy() > maxInitialTotalMaturity)
+                // We have to generate 50 deposits with total Maturity Amounts of all loans
+                // between 70 Million and 100 Million. Rounding deposits principal to Million
+                // wouldn't fit in the range and count specified. Thus we rounding here to
+                // hundred thousand.
+                int principal = random.Next(10, 25);
+                var deposit = new Deposit(100000.0 * principal, CurrentInterestRate);
+                maturity += deposit.MaturityAmount;
+                if (maturity > maxInitialTotalMaturity)
                 {
-                    Sell();
+                    maturity -= deposit.MaturityAmount;
                     break;
                 }
+                deposits.Add(deposit);
+            }
+            if (OnMaturityUpdateEvent != null)
+            {
+                OnMaturityUpdateEvent(maturity);
             }
         }
 
@@ -149,14 +165,14 @@ namespace WpfApp1
 
         public double CurrentInterestRate { get; set; }
 
-        private const double currentInterestRate = 0.04;
+        private const double initialInterestRate = 0.04;    // 4%
         private const double million = 1000000.0;
         private const double minTotalMaturity = million * 50;
         private const double maxTotalMaturity = million * 120;
         private const double maxInitialTotalMaturity = million * 100;
         private const int timerIntervalMs = 5000;
-        private const int minAddDepositSizeMiL = 3; // inclufing
-        private const int maxAddDepositSizeMil = 6; // excluding
+        private const int minAddDepositSizeMiL = 3;         // including
+        private const int maxAddDepositSizeMil = 6;         // excluding
 
         private int action = 0;
         private ObservableCollection<Deposit> deposits = new ObservableCollection<Deposit>();
